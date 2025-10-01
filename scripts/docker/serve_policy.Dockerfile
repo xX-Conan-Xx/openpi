@@ -13,7 +13,27 @@ COPY --from=ghcr.io/astral-sh/uv:0.5.1 /uv /uvx /bin/
 WORKDIR /app
 
 # Needed because LeRobot uses git-lfs.
-RUN apt-get update && apt-get install -y git git-lfs linux-headers-generic build-essential clang
+# RUN apt-get update && apt-get install -y git git-lfs linux-headers-generic build-essential clang
+# -------------------------------------------------------------------
+# Temporarily disable CUDA apt repos so we only use Ubuntu mirrors
+# -------------------------------------------------------------------
+    RUN mkdir -p /tmp/disabled-sources \
+    && mv /etc/apt/sources.list.d/cuda* /tmp/disabled-sources/ \
+    \
+    # Update & install git, git-lfs, headers, build tools, clang
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+         git \
+         git-lfs \
+         linux-headers-generic \
+         build-essential \
+         clang \
+    && rm -rf /var/lib/apt/lists/* \
+    \
+    # Restore CUDA repos for any later CUDA installs
+    && mv /tmp/disabled-sources/* /etc/apt/sources.list.d/
+   
 
 # Copy from the cache instead of linking since it's a mounted volume
 ENV UV_LINK_MODE=copy
