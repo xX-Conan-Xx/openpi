@@ -1,0 +1,25 @@
+defaults:
+  - _self_
+  - ../base/data@data: default
+  - ../base/algo@algo: bc_policy   
+  - ../base/policy@policy: dp    # policy_name: BCTransformerPolicy, image encoder: resnet, fuse: transformer
+  - ../base/train@train: default
+  - ../base/eval@eval: default
+  - ../base/env@env: default
+
+
+experiment_dir: ???
+
+hydra:
+  run:
+    dir: ./outputs/libero/${algo.algo_name}/dp/${data.env_name}/ratio${data.train_ratio}/${now:%m%d}_${now:%H%M}_seed${train.seed}
+  sweep:
+    dir: ./outputs/libero/${algo.algo_name}/dp/${data.env_name}/ratio${data.train_ratio}/${now:%m%d}_${now:%H%M}_seed${train.seed}
+    subdir: ${hydra.job.num}
+    
+wandb:
+  use_wandb: true
+  project: bc-ib-dp
+  name: ${data.env_name}_${algo.algo_name}_dp_${now:%m%d}_${now:%H%M}_seed${train.seed}_ratio${data.train_ratio}_${hydra:job.num}
+  group: ${data.env_name}_${algo.algo_name}_dp
+  dir: ./wandb/${env.env_type}/${algo.algo_name}/dp/${data.env_name}/ratio${data.train_ratio}

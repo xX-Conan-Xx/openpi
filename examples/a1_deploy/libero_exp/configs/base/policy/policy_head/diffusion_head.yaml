@@ -1,0 +1,13 @@
+network: DPHead
+
+network_kwargs:
+    model_type: DiT-B
+    token_size: 64
+    in_channels: 7
+    future_action_window_size: 9
+    past_action_window_size: 0
+    repeated_diffusion_steps: 8
+
+loss_kwargs:
+    loss_coef: 1.0
+    

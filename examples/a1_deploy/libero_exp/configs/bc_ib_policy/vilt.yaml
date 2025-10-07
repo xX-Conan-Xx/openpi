@@ -1,0 +1,25 @@
+defaults:
+  - _self_
+  - ../base/data@data: default
+  - ../base/algo@algo: bc_ib_policy   
+  - ../base/policy@policy: vilt_policy    # policy_name: BCViLTPolicy, image encoder: ViT, decoder: transformer
+  - ../base/train@train: default
+  - ../base/eval@eval: default
+  - ../base/env@env: default
+
+experiment_dir: ???
+
+hydra:
+  run:
+    dir: ./outputs/libero/${algo.algo_name}/vilt/${data.env_name}/ratio${data.train_ratio}_scale${train.mi_loss_scale}_${train.mine_mi_loss_scale}/${now:%m%d}_${now:%H%M}_seed${train.seed}
+  sweep:
+    dir: ./outputs/libero/${algo.algo_name}/vilt/${data.env_name}/ratio${data.train_ratio}_scale${train.mi_loss_scale}_${train.mine_mi_loss_scale}/${now:%m%d}_${now:%H%M}_seed${train.seed}
+    subdir: ${hydra.job.num}
+
+wandb:
+  use_wandb: true
+  project: bc-ib-vilt
+  name: ${data.env_name}_${algo.algo_name}_${now:%m%d}_${now:%H%M}_seed${train.seed}_ratio${data.train_ratio}_scale${train.mi_loss_scale}_${train.mine_mi_loss_scale}_${hydra:job.num}
+  group: ${data.env_name}_${algo.algo_name}
+  dir: ./wandb/${env.env_type}/${algo.algo_name}/${data.env_name}/ratio${data.train_ratio}_scale${train.mi_loss_scale}_${train.mine_mi_loss_scale}
+

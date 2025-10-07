@@ -1,0 +1,10 @@
+network: ResnetEncoder
+network_kwargs:
+    pretrained: false
+    freeze: false
+    remove_layer_num: 4
+    no_stride: false
+    language_fusion: 'film'
+    input_shape: null
+    output_size: null
+    language_dim: null
