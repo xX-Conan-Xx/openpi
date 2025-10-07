@@ -1,0 +1,22 @@
+defaults:
+    - data_augmentation@color_aug: batch_wise_img_color_jitter_group_aug
+    - data_augmentation@translation_aug: translation_aug
+    - image_encoder: resnet_encoder
+    - language_encoder: mlp_encoder
+    - position_encoding@temporal_position_encoding: sinusoidal_position_encoding
+    - policy_head: mlp_head
+    
+
+policy_type: BCMLPPolicy 
+embed_size: 64
+
+extra_state_encoder:
+    extra_num_layers: 0
+    extra_hidden_size: 128
+
+spatial_mlp:
+    input_size: ${policy.embed_size}
+    hidden_size: [256, 256]
+    output_size: ${policy.embed_size}
+
+

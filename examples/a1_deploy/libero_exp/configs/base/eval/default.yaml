@@ -1,0 +1,16 @@
+load_path: "" # only used when separately evaluating a pretrained model
+eval: false
+debug: false
+
+batch_size: 64
+num_workers: 0
+eval_every: ${train.save_freq}
+
+# rollout
+enable_rollout: false
+eval_all: false   # if false, only evaluate on final checkpoint
+
+# other
+use_mp: true
+num_procs: 20
+save_sim_states: false

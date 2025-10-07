@@ -1,0 +1,31 @@
+defaults:
+    - optimizer@optimizer: adam_w.yaml
+    - scheduler@scheduler: cosine_annealing.yaml
+
+
+# training
+seed: 0
+device: "cuda"
+train_gpus: [0]
+mix_precision: false
+use_augmentation: true
+
+n_epochs: 50        
+batch_size: 64
+num_workers: 8
+
+val_freq: 5
+save_freq: 10
+
+grad_clip: 100.
+loss_scale: 1.0
+mi_loss_scale: 1e-4
+mine_mi_loss_scale: 0.1
+
+# resume training
+resume: false
+resume_path: ""
+
+# degug
+debug: false
+dry: false                      # dry run 

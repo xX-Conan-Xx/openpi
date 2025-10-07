@@ -1,0 +1,30 @@
+load_pretrained_model: true
+config_name: /home/luka/Wenkai/openvla/third_party/iVideoGPT/configs/llama/config.json
+vqgan_type: ctx_vqgan
+pretrained_model_name_or_path: /home/luka/Wenkai/openvla/third_party/pretrained_world_model/ivideogpt-oxe-64-act-free/tokenizer
+pretrained_transformer_path: /home/luka/Wenkai/openvla/third_party/pretrained_world_model/ivideogpt-oxe-64-act-free/transformer
+load_internal_llm: true
+llama_attn_drop: 0.1
+fast_reward_predictor: false
+symlog: true
+
+context_length: 2
+segment_length: 28
+action_dim: 4
+
+batch_size: 16
+selected_params: true
+tok_lr: 1e-4
+tok_wd: 0.0
+tok_beta1: 0.9
+tok_beta2: 0.999
+max_grad_norm: 1.0
+max_target_frames: 5
+
+model_lr: 1e-4
+model_wd: 0.0
+embed_no_wd: true
+
+reward_lr: 1e-4
+reward_wd: 1e-6
+reward_weight: 1.0
