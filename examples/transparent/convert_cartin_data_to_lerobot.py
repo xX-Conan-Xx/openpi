@@ -115,7 +115,7 @@ def main():
     ap.add_argument("--data_root", type=str, required=True)
     ap.add_argument("--repo_id", type=str, required=True)
     ap.add_argument("--task_name", type=str, default="custom_task")
-    ap.add_argument("--img_size", type=int, default=256)
+    ap.add_argument("--img_size", type=int, default=224)
     ap.add_argument("--fps", type=int, default=10)
     ap.add_argument("--push_to_hub", action="store_true")
     args = ap.parse_args()

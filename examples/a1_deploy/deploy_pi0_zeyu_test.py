@@ -17,11 +17,11 @@ class PI0RobotController:
     
     # Preset positions and task prompts
     POSITION_PRESETS = {
-        "stack_cups": (0.141813, 0.331205, 0.398772, 0.00, 0.00, 1.00, 0.00, 1.00),
+        "stack_cups": (0.092313, 0.401136, 0.340003, 0.036884, 0.991207, 0.095079, 0.084310, 1.00),
     }
     
     TASK_PROMPTS = {
-        "stack_cups": "pick up the transparent bottle and place it on the other side of pink cup",
+        "stack_cups": "pick up the opaque bottle and place it on the other side of pink cup",
     }
     
     def __init__(self, controller, websocket_host="0.0.0.0", websocket_port=8000):
@@ -47,19 +47,41 @@ class PI0RobotController:
             get_L515_image(self.pipelines)
             get_D435_image(self.pipelines)
     
-    def capture_images(self, step=None, save_dir="/home/luka/Wenkai/visualization/"):
+    def capture_images(self, step=None, save_dir="/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/TestDump/"):
         """Capture and process images from cameras"""
         try:
-            main_image = get_L515_image(self.pipelines)
-            wrist_image = get_D435_image(self.pipelines)
+            # Load test images from a directory
+            test_image_dir = "/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/Data/A1_table_dataset_930/pick_bottle_opaque_messy/demo_0/"
+            main_image_path = os.path.join(
+                test_image_dir, "right_camera", f"scene_frame_{step+1:04d}.jpg"
+            )
+            wrist_image_path = os.path.join(
+                test_image_dir, "left_camera", f"wrist_frame_{step+1:04d}.jpg"
+            )
+            main_image = Image.open(main_image_path)
+            wrist_image = Image.open(wrist_image_path)
+            
+            # if os.path.exists(main_image_path) and os.path.exists(wrist_image_path):
+            #     main_image = Image.open(main_image_path)
+            #     wrist_image = Image.open(wrist_image_path)
+            # else:
+            #     print("Test images not found, skipping step")
+            #     main_image, wrist_image = None, None
+
+            # main_image = get_L515_image(self.pipelines)
+            # wrist_image = get_D435_image(self.pipelines)
             
             if main_image is None or wrist_image is None:
                 print("Failed to capture image from camera.")
                 return None, None, None
                 
-            # Convert to BGR and resize
-            bgr_main = self._convert_to_bgr(main_image).resize((256, 256))
-            bgr_wrist = self._convert_to_bgr(wrist_image).resize((256, 256))
+            # # Convert to BGR and resize
+            # bgr_main = self._convert_to_bgr(main_image).resize((256, 256))
+            # bgr_wrist = self._convert_to_bgr(wrist_image).resize((256, 256))
+
+            # keep the input as rgb
+            bgr_main = main_image.resize((224, 224))
+            bgr_wrist = wrist_image.resize((224, 224))
             
             # Save images if step is provided
             main_path = None
@@ -188,12 +210,8 @@ class PI0RobotController:
                 print(f"\n--- Step {step} ---")
                 start_time = time.time()
                 
-                # # Capture images
-                # main_image, wrist_image, _ = self.capture_images(step)
-
-                # Generate random main and wrist images
-                main_image = Image.fromarray(np.random.randint(0, 256, (256, 256, 3), dtype=np.uint8))
-                wrist_image = Image.fromarray(np.random.randint(0, 256, (256, 256, 3), dtype=np.uint8))
+                # Capture images
+                main_image, wrist_image, _ = self.capture_images(step)
                 
                 if main_image is None or wrist_image is None:
                     print("Failed to capture camera images, skipping step")
@@ -207,6 +225,11 @@ class PI0RobotController:
                 element = self.prepare_inference_data(main_image, wrist_image, current_state, prompt)
                 
                 print("current_state:", current_state)
+                # Save current state to a text file
+                state_save_path = "/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/TestDump/current_state.txt"
+                with open(state_save_path, "a") as state_file:
+                    state_file.write(f"Step {step}: {current_state.tolist()}\n")
+                
                 
                 # Perform inference
                 inf_time = time.time()
@@ -215,17 +238,26 @@ class PI0RobotController:
                 
                 # Process actions
                 all_actions = np.asarray(action["actions"])
-                actions_to_execute = all_actions[:chunk_size]
+                current_state_pose_only = current_state
+                current_state_pose_only[-1] = 0
+                delta_all_actions = all_actions - current_state
+
+                actions_to_execute = delta_all_actions[:chunk_size]
                 
-                # Log absolute positions
-                absolute_actions = current_state + actions_to_execute.tolist()
-                print("Actions to execute (absolute positions):")
-                for i, abs_action in enumerate(absolute_actions):
+                # # Log absolute positions
+                # absolute_actions = current_state + actions_to_execute.tolist()
+                # print("Actions to execute (absolute positions):")
+                # for i, abs_action in enumerate(absolute_actions):
+                #     print(f"  Step {i+1}: {abs_action}")
+                
+                print("Actions to execute (delta positions):")
+                for i, abs_action in enumerate(actions_to_execute):
                     print(f"  Step {i+1}: {abs_action}")
                 
+
                 # Execute action chunk
                 new_pose, new_rpy_infer, new_gripper = self.execute_action_chunk(
-                    all_actions, chunk_size, merge_step, step,
+                    actions_to_execute, chunk_size, merge_step, step,
                     init_pose, init_rpy_exe, init_gripper, task_name
                 )
                 # print("new_gripper", new_gripper)
@@ -269,7 +301,7 @@ def main():
     # Run control loop
     robot_system.run_control_loop(
         task_name="stack_cups",
-        n_iterations=1000,
+        n_iterations=2,
         chunk_size=10,
         merge_step=1,
         loop_interval=0.1
