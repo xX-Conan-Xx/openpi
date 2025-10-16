@@ -20,6 +20,7 @@ class PI0InferenceSystem:
         "pick_bowl": (0.320, 0.12, 0.2456, 0.00, 0.00, 1, 0, 1),
         "stack_cup": (0.4, 0.26, 0.28, 0.00, 0.00, 1, 0, 1),
         "pick_plate": (0.394, 0.182, 0.257, 0.00, 0.00, 1, 0, 1),
+        "pick_opaque_bottle":(0.172454, 0.318198, 0.341037, 0.155769, 0.963294, 0.197023, 0.094776, 1),
     }
     
     # 任务提示词
@@ -31,6 +32,7 @@ class PI0InferenceSystem:
         "pick_bowl": "place the green cube and orange into the bowl",
         "stack_cup": "stack the green cup and pink cup on the purple cup",
         "pick_plate": "place the banana and mango into the plate",
+        "pick_opaque_bottle":"pick up the opaque bottle and place it on the other side of the pink cup",
     }
     
     def __init__(self, websocket_host="0.0.0.0", websocket_port=8000):
@@ -66,7 +68,7 @@ class PI0InferenceSystem:
         init_pose = list(preset[0:3])
         init_quat = preset[3:7]
         init_rpy = self.quaternion_to_rpy(init_quat)
-        init_gripper = -preset[-1]  # -1是开启
+        init_gripper = preset[-1]  # -1是开启
         
         return np.concatenate((init_pose, init_rpy, [init_gripper]), axis=0)
     
@@ -160,9 +162,9 @@ def main():
     # 示例1: 单次推理测试
     print("=== Example 1: Single Inference ===")
     result = inference_system.single_inference(
-        main_image_path="/home/luka/Wenkai/scene_frame_0001.jpg",
-        wrist_image_path="/home/luka/Wenkai/wrist_frame__0001.jpg",
-        task_name="place_bread_plate"
+        main_image_path="/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/Data/A1_table_dataset_930/pick_bottle_opaque_messy/demo_0/right_camera/scene_frame_0001.jpg",
+        wrist_image_path="/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/Data/A1_table_dataset_930/pick_bottle_opaque_messy/demo_0/left_camera/wrist_frame_0001.jpg",
+        task_name="pick_opaque_bottle"
     )
     
     if result and result["success"]:
