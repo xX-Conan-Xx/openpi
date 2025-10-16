@@ -979,7 +979,7 @@ _CONFIGS = [
         data=LeRobotLiberoDataConfig(
             repo_id="xX-Conan-Xx/pick_up_opaque_bottle",
             base_config=DataConfig(prompt_from_task=True),
-            extra_delta_transform=False,
+            extra_delta_transform=True,
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi0_base/params"),
         num_train_steps=30_000,
