@@ -65,18 +65,35 @@ def load_and_resize_image(path: Path, size: int) -> np.ndarray:
     return np.array(im, dtype=np.uint8)
 
 # ---------- main conversion ----------
-def build_state_action_from_pose_and_gripper(p_xyz: np.ndarray,
+def build_state_from_pose_and_gripper(p_xyz: np.ndarray,
                                              q_xyzw: np.ndarray,
                                              gripper: np.ndarray) -> np.ndarray:
     N = min(len(p_xyz), len(q_xyzw), len(gripper))
     out = np.zeros((N, 7), dtype=np.float32)
+    gripper_bool = (gripper < -2.0).astype(np.float32)  # cartin: -3.0 closed, -1.0 open
     for i in range(N):
         R = quat_to_R_xyzw(q_xyzw[i])
         r, p, y = R_to_rpy_xyz(R)
         out[i, 0:3] = p_xyz[i]
         out[i, 3:6] = [r, p, y]
-        out[i, 6]   = gripper[i]
+        out[i, 6]   = gripper_bool[i]
     return out
+
+def build_action_from_difference_of_states(states: np.ndarray) -> np.ndarray:
+    N = len(states)
+    actions = np.zeros((N, 7), dtype=np.float32)
+
+    # set last action to zero
+    actions[-1,0:6] = np.zeros((6,), dtype=np.float32)
+    actions[-1,6] = states[-1,6]
+
+    # keep the last column (gripper) the same as states
+    # compute difference for the first 6 columns
+    for i in range(N - 1):
+        actions[i, 0:6] = states[i + 1, 0:6] - states[i, 0:6]
+        actions[i, 6] = states[i, 6]
+
+    return actions
 
 def convert_episode(demo_dir: Path, dataset: LeRobotDataset, img_size: int, task_name: str):
     # signals
@@ -85,8 +102,8 @@ def convert_episode(demo_dir: Path, dataset: LeRobotDataset, img_size: int, task
 
     N = min(len(t_pose), len(t_joint))
     p_xyz, q_xyzw, gripper = p_xyz[:N], q_xyzw[:N], gripper[:N]
-    sa = build_state_action_from_pose_and_gripper(p_xyz, q_xyzw, gripper)  # (N,7)
-
+    states = build_state_from_pose_and_gripper(p_xyz, q_xyzw, gripper)  # (N,7)
+    actions = build_action_from_difference_of_states(states)  # (N,7)
     # cameras
     right_dir = demo_dir / "right_camera"
     left_dir  = demo_dir / "left_camera"
@@ -101,8 +118,8 @@ def convert_episode(demo_dir: Path, dataset: LeRobotDataset, img_size: int, task
     for i in range(M):
         frame = {
             "image": load_and_resize_image(right_imgs[i], img_size),   # RIGHT (kept as "image")
-            "state": sa[i],
-            "actions": sa[i],
+            "state": states[i],
+            "actions": actions[i],
             "task": task_name,
         }
         if left_imgs:

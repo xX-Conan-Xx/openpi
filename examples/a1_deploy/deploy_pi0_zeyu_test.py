@@ -17,11 +17,11 @@ class PI0RobotController:
     
     # Preset positions and task prompts
     POSITION_PRESETS = {
-        "stack_cups": (0.092313, 0.401136, 0.340003, 0.036884, 0.991207, 0.095079, 0.084310, 1.00),
+        "stack_cups": (0.17245, 0.31820, 0.34104, 0.155769, 0.963294, 0.197023, 0.094776, 1.00),
     }
     
     TASK_PROMPTS = {
-        "stack_cups": "pick up the opaque bottle and place it on the other side of pink cup",
+        "stack_cups": "pick up the opaque bottle and place it on the other side of the pink cup",
     }
     
     def __init__(self, controller, websocket_host="0.0.0.0", websocket_port=8000):
@@ -138,10 +138,11 @@ class PI0RobotController:
         
         # Process gripper command
         gripper_command = action_step[6]
-        gripper_position = round((1 - gripper_command) / 2, 5)
+        # gripper_position = round((1 - gripper_command) / 2, 5)
+        gripper_position = round(gripper_command, 5)
         
         # Fixed orientation values
-        new_rpy = [0.027, -0.01, 3.15]
+        # new_rpy = [0.027, -0.01, 3.15]
         
         return new_position, new_rpy, gripper_position
     
@@ -193,18 +194,32 @@ class PI0RobotController:
         execute_action = self.POSITION_PRESETS[task_name]
         init_pose = list(execute_action[:3])
         init_quat_exe = execute_action[3:7]
-        init_quat_infer = [execute_action[3], execute_action[5], execute_action[4], execute_action[6]]
+        init_quat_infer = [execute_action[3], execute_action[4], execute_action[5], execute_action[6]]
         
         print(f"Initial pose: {init_pose}, Quaternion: {init_quat_exe}")
         
         init_rpy_exe = self.quaternion_to_rpy(init_quat_exe)
         init_rpy_infer = self.quaternion_to_rpy(init_quat_infer) 
-        init_gripper = -execute_action[-1]
+        init_gripper = execute_action[-1]
         
         print(f"Initial state - Pose: {init_pose}, RPY: {init_rpy_exe}, Gripper: {init_gripper}")
         
         step = 0
         
+        
+        # # load current state from file
+        # pose_load_path = "/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/Data/A1_table_dataset_930/pick_bottle_opaque_messy/demo_0/end_effector_pose_right_arm.txt"
+        # grip_load_path = "/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/Data/A1_table_dataset_930/pick_bottle_opaque_messy/demo_0/joint_states_right_arm.txt"
+        # pose_data = np.loadtxt(pose_load_path)
+        # pose_data = pose_data[:, 1:8]
+        # grip_data = np.loadtxt(grip_load_path)
+        # grip_data = grip_data[:, -1]
+        # pose_data_xyz = pose_data[:, :3]
+        # pose_data_rpy = []
+        # for q in pose_data[:, 3:7]:
+        #     rpy = self.quaternion_to_rpy([q[0], q[2], q[1], q[3]])
+        #     pose_data_rpy.append(rpy)
+
         try:
             while step < n_iterations:
                 print(f"\n--- Step {step} ---")
@@ -221,15 +236,16 @@ class PI0RobotController:
                 # Prepare current state
                 current_state = np.concatenate((init_pose, init_rpy_infer, [init_gripper]))
                 
-                # Prepare inference data
-                element = self.prepare_inference_data(main_image, wrist_image, current_state, prompt)
-                
                 print("current_state:", current_state)
                 # Save current state to a text file
                 state_save_path = "/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/TestDump/current_state.txt"
                 with open(state_save_path, "a") as state_file:
                     state_file.write(f"Step {step}: {current_state.tolist()}\n")
+
+                # Prepare inference data
+                element = self.prepare_inference_data(main_image, wrist_image, current_state, prompt)
                 
+                print("current_state:", current_state)
                 
                 # Perform inference
                 inf_time = time.time()
@@ -238,23 +254,14 @@ class PI0RobotController:
                 
                 # Process actions
                 all_actions = np.asarray(action["actions"])
-                current_state_pose_only = current_state
-                current_state_pose_only[-1] = 0
-                delta_all_actions = all_actions - current_state
-
-                actions_to_execute = delta_all_actions[:chunk_size]
+                actions_to_execute = all_actions[:chunk_size]
                 
-                # # Log absolute positions
-                # absolute_actions = current_state + actions_to_execute.tolist()
-                # print("Actions to execute (absolute positions):")
-                # for i, abs_action in enumerate(absolute_actions):
-                #     print(f"  Step {i+1}: {abs_action}")
-                
-                print("Actions to execute (delta positions):")
-                for i, abs_action in enumerate(actions_to_execute):
+                # Log absolute positions
+                absolute_actions = current_state + actions_to_execute.tolist()
+                print("Actions to execute (absolute positions):")
+                for i, abs_action in enumerate(absolute_actions):
                     print(f"  Step {i+1}: {abs_action}")
                 
-
                 # Execute action chunk
                 new_pose, new_rpy_infer, new_gripper = self.execute_action_chunk(
                     actions_to_execute, chunk_size, merge_step, step,
@@ -301,8 +308,8 @@ def main():
     # Run control loop
     robot_system.run_control_loop(
         task_name="stack_cups",
-        n_iterations=2,
-        chunk_size=10,
+        n_iterations=200,
+        chunk_size=1,
         merge_step=1,
         loop_interval=0.1
     )
