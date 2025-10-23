@@ -90,7 +90,14 @@ def build_action_from_difference_of_states(states: np.ndarray) -> np.ndarray:
     # keep the last column (gripper) the same as states
     # compute difference for the first 6 columns
     for i in range(N - 1):
-        actions[i, 0:6] = states[i + 1, 0:6] - states[i, 0:6]
+        diff = states[i + 1, 0:6] - states[i, 0:6]
+
+        # wrap-safe differences for angles (assumes [3:6] are r,p,y in radians)
+        a_next = states[i + 1, 3:6]
+        a_curr = states[i, 3:6]
+        diff[3:6] = np.arctan2(np.sin(a_next - a_curr), np.cos(a_next - a_curr))
+
+        actions[i, 0:6] = diff
         actions[i, 6] = states[i, 6]
 
     return actions
@@ -173,8 +180,8 @@ def main():
                 "names": ["x","y","z","roll","pitch","yaw","gripper"],
             },
         },
-        image_writer_threads=8,
-        image_writer_processes=4,
+        image_writer_threads=1,
+        image_writer_processes=1,
     )
 
     for d in demos:
