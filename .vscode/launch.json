@@ -1,25 +1,48 @@
+// {
+//     "version": "0.2.0",
+//     "configurations": [
+//       {
+//         "name": "Train (openpi .venv)",
+//         "type": "debugpy",
+//         "request": "launch",
+//         "program": "${workspaceFolder}/scripts/train.py",
+//         "args": [
+//           "pi0_opaque_low_mem_finetune",
+//           "--exp-name=train0810",
+//           "--resume"
+//         ],
+//         "env": {
+//           "XLA_PYTHON_CLIENT_MEM_FRACTION": "0.9"
+//         },
+//         "cwd": "${workspaceFolder}",
+//         "console": "integratedTerminal",
+//         "justMyCode": false,
+//         "subProcess": true
+//       }
+//     ]
+// }
 {
-    "version": "0.2.0",
-    "configurations": [
-      {
-        "name": "Train (openpi .venv)",
-        "type": "debugpy",
-        "request": "launch",
-        "program": "${workspaceFolder}/scripts/train.py",
-        "args": [
-          "pi0_opaque_low_mem_finetune",
-          "--exp-name=train0810",
-          "--resume"
-        ],
-        "env": {
-          "XLA_PYTHON_CLIENT_MEM_FRACTION": "0.9"
-        },
-        "cwd": "${workspaceFolder}",
-        "console": "integratedTerminal",
-        "justMyCode": false,
-        "subProcess": true
-      }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Convert (openpi .venv)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/examples/transparent/convert_cartin_data_to_lerobot.py",
+      "args": [
+        "--data_root",
+        "/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/Data/A1_table_dataset_930/pick_bottle_messy/",
+        "--repo_id",
+        "test/pick_up_transparent_bottle",
+        "--task_name",
+        "pick up the transparent bottle and place it on the other side of the pink cup"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "subProcess": true
+    }
+  ]
 }
 // {
 //     // Use IntelliSense to learn about possible attributes.
