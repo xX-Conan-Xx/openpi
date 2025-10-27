@@ -18,11 +18,13 @@ class PI0RobotController:
     # Preset positions and task prompts
     # input must follow [x, y, z, qw, qx, qy, qz, gripper]
     POSITION_PRESETS = {
-        "stack_cups": (0.148857, 0.385065, 0.321536, 0.095473, -0.030929, 0.994730, 0.020987 , 1.00),
+        # "stack_cups": (0.148857, 0.385065, 0.321536, 0.095473, -0.030929, 0.994730, 0.020987 , 1.00),
+        # "stack_cups": (0.148857, 0.385065, 0.321536, 0.0998334, 0, 0.9950042, 0, 1.00),
+        "stack_cups": (0.148857, 0.385065, 0.321536,  -0.0249974, 0, 0.9996875, 0, 1.00),
     }
     
     TASK_PROMPTS = {
-        "stack_cups": "pick up the opaque bottle and place it on the other side of pink cup",
+        "stack_cups": "pick up the transparent bottle and place it on the other side of pink cup",
     }
     
     def __init__(self, controller, websocket_host="0.0.0.0", websocket_port=8000):
@@ -48,7 +50,7 @@ class PI0RobotController:
             get_L515_image(self.pipelines)
             get_D435_image(self.pipelines)
     
-    def capture_images(self, step=None, save_dir="/home/luka/Wenkai/visualization/"):
+    def capture_images(self, step=None, save_dir="/home/luka/Zeyu/Record_Other/20"):
         """Capture and process images from cameras"""
         try:
             main_image = get_L515_image(self.pipelines)
@@ -59,10 +61,23 @@ class PI0RobotController:
                 return None, None, None
                 
             # Convert to BGR and resize
-            # bgr_main = self._convert_to_bgr(main_image).resize((224, 224))
-            # bgr_wrist = self._convert_to_bgr(wrist_image).resize((224, 224))
-            bgr_main = main_image.resize((224, 224))
-            bgr_wrist = wrist_image.resize((224, 224))
+            bgr_main = self._convert_to_bgr(main_image).resize((224, 224))
+            bgr_wrist = self._convert_to_bgr(wrist_image).resize((224, 224))
+            
+            
+            # # hardcode hack
+            # # only keep 0.8 percent of the wrist image height and width crop from center
+            # wrist_width, wrist_height = wrist_image.size
+            # crop_width = int(wrist_width * 0.8)
+            # crop_height = int(wrist_height * 0.8)
+            # left = (wrist_width - crop_width) // 2
+            # top = (wrist_height - crop_height) // 2
+            # right = left + crop_width
+            # bottom = top + crop_height
+            # wrist_image = wrist_image.crop((left, top, right, bottom))
+            
+            # bgr_main = main_image.resize((224, 224))
+            # bgr_wrist = wrist_image.resize((224, 224))
             
             # Save images if step is provided
             main_path = None
@@ -124,7 +139,8 @@ class PI0RobotController:
         
         # # Fixed orientation values
         # # new_rpy = [0.027, -0.01, 3.15]
-        # new_rpy = [3.0892, 0.1145, 3.1313]
+        # new_rpy = [3.1051,  0.1924 ,-3.083]
+        new_rpy = [3.1415926,  0.0 ,3.1415926]
         
         return new_position, new_rpy, gripper_position
     
@@ -156,7 +172,7 @@ class PI0RobotController:
             # final_action = new_pos + new_rpy + [grip]
             final_action = new_pos + new_quat_exe + [grip]
             
-            print(f"Executing: {final_action}")
+            print(f"Executing: {np.array(final_action)}")
             self.controller.execute_eef(final_action, task_name)
             
         return new_pos, new_rpy, grip
@@ -221,6 +237,7 @@ class PI0RobotController:
                 # Process actions
                 all_actions = np.asarray(action["actions"])
                 actions_to_execute = all_actions[:chunk_size]
+                print(f"Actions to execute: {actions_to_execute}")
                 
                 # # Log absolute positions
                 # absolute_actions = np.zeros_like(actions_to_execute)
@@ -266,7 +283,7 @@ class PI0RobotController:
 
 def main():
     """Main function to initialize and run the robot controller"""
-    from controller_eef import A1ArmController
+    from controller_eef_zeyu import A1ArmController
     
     # Initialize controller and robot system
     controller = A1ArmController()
@@ -276,7 +293,7 @@ def main():
     robot_system.run_control_loop(
         task_name="stack_cups",
         n_iterations=1000,
-        chunk_size=2,
+        chunk_size=1,
         merge_step=1,
         loop_interval=0.1
     )
