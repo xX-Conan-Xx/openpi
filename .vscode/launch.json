@@ -25,6 +25,17 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Python Debugger: Current File with Arguments",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${file}",
+      "console": "integratedTerminal",
+      "args": [
+        "--config-name",
+        "pi0_transparent_low_mem_finetune"
+      ],
+    },
+    {
       "name": "Convert (openpi .venv)",
       "type": "debugpy",
       "request": "launch",
@@ -33,9 +44,10 @@
         "--data_root",
         "/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/Data/A1_table_dataset_930/pick_bottle_messy/",
         "--repo_id",
-        "test/pick_up_transparent_bottle",
+        "xX-Conan-Xx/pick_up_transparent_bottle",
         "--task_name",
-        "pick up the transparent bottle and place it on the other side of the pink cup"
+        "pick up the transparent bottle and place it on the other side of the pink cup",
+        "--push_to_hub"
       ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",

@@ -90,14 +90,38 @@ def build_action_from_difference_of_states(states: np.ndarray) -> np.ndarray:
     # keep the last column (gripper) the same as states
     # compute difference for the first 6 columns
     for i in range(N - 1):
-        diff = states[i + 1, 0:6] - states[i, 0:6]
+        actions[i, 0:6] = states[i + 1, 0:6] - states[i, 0:6]
 
-        # wrap-safe differences for angles (assumes [3:6] are r,p,y in radians)
-        a_next = states[i + 1, 3:6]
-        a_curr = states[i, 3:6]
-        diff[3:6] = np.arctan2(np.sin(a_next - a_curr), np.cos(a_next - a_curr))
+        if actions[i, 3] > math.pi:
+            print("Huge jump identified in roll; correcting, roll:", actions[i, 3])
+            actions[i,3] = math.pi *2 - actions[i,3]
+            print("Corrected roll action:", actions[i, 3])
+        if actions[i, 3] < -1 * math.pi:
+            print("Huge jump identified in roll; correcting, roll:", actions[i, 3])
+            actions[i,3] = math.pi *2 + actions[i,3]
+            print("Corrected roll action:", actions[i, 3])
 
-        actions[i, 0:6] = diff
+        
+        if actions[i, 4] > math.pi:
+            print("Huge jump identified in pitch; correcting, pitch:", actions[i, 4])
+            actions[i,4] = math.pi *2 - actions[i,4]
+            print("Corrected pitch action:", actions[i, 4])
+        if actions[i, 4] < -1 * math.pi:
+            print("Huge jump identified in pitch; correcting, pitch:", actions[i, 4])
+            actions[i,4] = math.pi *2 + actions[i,4]
+            print("Corrected pitch action:", actions[i, 4])
+        
+
+        if actions[i, 5] > math.pi:
+            print("Huge jump identified in yaw; correcting, yaw:", actions[i, 5])
+            actions[i,5] = math.pi *2 - actions[i,5]
+            print("Corrected yaw action:", actions[i, 5])
+        if actions[i, 5] < -1 * math.pi:
+            print("Huge jump identified in yaw; correcting, yaw:", actions[i, 5])
+            actions[i,5] = math.pi *2 + actions[i,5]
+            print("Corrected yaw action:", actions[i, 5])
+
+        
         actions[i, 6] = states[i, 6]
 
     return actions
@@ -180,8 +204,8 @@ def main():
                 "names": ["x","y","z","roll","pitch","yaw","gripper"],
             },
         },
-        image_writer_threads=1,
-        image_writer_processes=1,
+        image_writer_threads=8,
+        image_writer_processes=4,
     )
 
     for d in demos:
