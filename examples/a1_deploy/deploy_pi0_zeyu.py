@@ -16,8 +16,11 @@ class PI0RobotController:
     """Simplified PI0 Robot Controller"""
     
     # Preset positions and task prompts
+    # input must follow [x, y, z, qw, qx, qy, qz, gripper]
     POSITION_PRESETS = {
-        "stack_cups": (0.141813, 0.331205, 0.398772, 0.00, 0.00, 1.00, 0.00, 1.00),
+        # "stack_cups": (0.148857, 0.385065, 0.321536, 0.095473, -0.030929, 0.994730, 0.020987 , 1.00),
+        # "stack_cups": (0.148857, 0.385065, 0.321536, 0.0998334, 0, 0.9950042, 0, 1.00),
+        "stack_cups": (0.148857, 0.385065, 0.321536,  -0.0249974, 0, 0.9996875, 0, 1.00),
     }
     
     TASK_PROMPTS = {
@@ -47,7 +50,7 @@ class PI0RobotController:
             get_L515_image(self.pipelines)
             get_D435_image(self.pipelines)
     
-    def capture_images(self, step=None, save_dir="/home/luka/Wenkai/visualization/"):
+    def capture_images(self, step=None, save_dir="/home/luka/Zeyu/Record_Other/20"):
         """Capture and process images from cameras"""
         try:
             main_image = get_L515_image(self.pipelines)
@@ -58,8 +61,23 @@ class PI0RobotController:
                 return None, None, None
                 
             # Convert to BGR and resize
-            bgr_main = self._convert_to_bgr(main_image).resize((256, 256))
-            bgr_wrist = self._convert_to_bgr(wrist_image).resize((256, 256))
+            bgr_main = self._convert_to_bgr(main_image).resize((224, 224))
+            bgr_wrist = self._convert_to_bgr(wrist_image).resize((224, 224))
+            
+            
+            # # hardcode hack
+            # # only keep 0.8 percent of the wrist image height and width crop from center
+            # wrist_width, wrist_height = wrist_image.size
+            # crop_width = int(wrist_width * 0.8)
+            # crop_height = int(wrist_height * 0.8)
+            # left = (wrist_width - crop_width) // 2
+            # top = (wrist_height - crop_height) // 2
+            # right = left + crop_width
+            # bottom = top + crop_height
+            # wrist_image = wrist_image.crop((left, top, right, bottom))
+            
+            # bgr_main = main_image.resize((224, 224))
+            # bgr_wrist = wrist_image.resize((224, 224))
             
             # Save images if step is provided
             main_path = None
@@ -115,11 +133,14 @@ class PI0RobotController:
         new_rpy = [round(current_rpy[i] + delta_rpy[i], 5) for i in range(3)]
         
         # Process gripper command
+        #zeyy change gripper_command
         gripper_command = action_step[6]
-        gripper_position = round((1 - gripper_command) / 2, 5)
+        gripper_position = round(gripper_command, 5)
         
-        # Fixed orientation values
-        new_rpy = [0.027, -0.01, 3.15]
+        # # Fixed orientation values
+        # # new_rpy = [0.027, -0.01, 3.15]
+        # new_rpy = [3.1051,  0.1924 ,-3.083]
+        new_rpy = [3.1415926,  0.0 ,3.1415926]
         
         return new_position, new_rpy, gripper_position
     
@@ -145,9 +166,13 @@ class PI0RobotController:
             else:
                 grip = 1.0
             print("new_gripper", grip)
-            final_action = new_pos + new_rpy + [grip]
             
-            print(f"Executing: {final_action}")
+            new_quat = R.from_euler('xyz', new_rpy).as_quat()
+            new_quat_exe = [new_quat[3], new_quat[0], new_quat[1], new_quat[2]]
+            # final_action = new_pos + new_rpy + [grip]
+            final_action = new_pos + new_quat_exe + [grip]
+            
+            print(f"Executing: {np.array(final_action)}")
             self.controller.execute_eef(final_action, task_name)
             
         return new_pos, new_rpy, grip
@@ -170,19 +195,19 @@ class PI0RobotController:
         # Initialize robot state
         execute_action = self.POSITION_PRESETS[task_name]
         init_pose = list(execute_action[:3])
-        init_quat_exe = execute_action[3:7]
-        init_quat_infer = [execute_action[3], execute_action[5], execute_action[4], execute_action[6]]
+        # init_quat_exe = execute_action[3:7]
+        init_quat_infer = [execute_action[4], execute_action[5], execute_action[6], execute_action[3]]
         
-        print(f"Initial pose: {init_pose}, Quaternion: {init_quat_exe}")
+        # print(f"Initial pose: {init_pose}, Quaternion: {init_quat_infer}")
         
-        init_rpy_exe = self.quaternion_to_rpy(init_quat_exe)
+        # init_rpy_exe = self.quaternion_to_rpy(init_quat_exe)
         init_rpy_infer = self.quaternion_to_rpy(init_quat_infer) 
-        init_gripper = -execute_action[-1]
+        init_gripper = execute_action[-1]
         
-        print(f"Initial state - Pose: {init_pose}, RPY: {init_rpy_exe}, Gripper: {init_gripper}")
-        
+        print(f"Initial state - Pose: {init_pose}, RPY: {init_rpy_infer}, Gripper: {init_gripper}")
+
         step = 0
-        
+
         try:
             while step < n_iterations:
                 print(f"\n--- Step {step} ---")
@@ -202,7 +227,7 @@ class PI0RobotController:
                 # Prepare inference data
                 element = self.prepare_inference_data(main_image, wrist_image, current_state, prompt)
                 
-                print("current_state:", current_state)
+                print("current_state (input to model):", current_state)
                 
                 # Perform inference
                 inf_time = time.time()
@@ -212,22 +237,25 @@ class PI0RobotController:
                 # Process actions
                 all_actions = np.asarray(action["actions"])
                 actions_to_execute = all_actions[:chunk_size]
+                print(f"Actions to execute: {actions_to_execute}")
                 
-                # Log absolute positions
-                absolute_actions = current_state + actions_to_execute.tolist()
-                print("Actions to execute (absolute positions):")
-                for i, abs_action in enumerate(absolute_actions):
-                    print(f"  Step {i+1}: {abs_action}")
+                # # Log absolute positions
+                # absolute_actions = np.zeros_like(actions_to_execute)
+                # absolute_actions[:,0:6] = current_state[0:6] + actions_to_execute[0:6]
+                # absolute_actions[:,6] = actions_to_execute[:,6]
+                # print("Actions to execute (absolute positions):")
+                # for i, abs_action in enumerate(absolute_actions):
+                #     print(f"  Step {i+1}: {abs_action}")
                 
                 # Execute action chunk
                 new_pose, new_rpy_infer, new_gripper = self.execute_action_chunk(
-                    all_actions, chunk_size, merge_step, step,
-                    init_pose, init_rpy_exe, init_gripper, task_name
+                    actions_to_execute, chunk_size, merge_step, step,
+                    init_pose, init_rpy_infer, init_gripper, task_name
                 )
                 # print("new_gripper", new_gripper)
                 
                 # Update state
-                init_pose, init_rpy_exe, init_gripper = new_pose, new_rpy_infer, new_gripper
+                init_pose, init_rpy_infer, init_gripper = new_pose, new_rpy_infer, new_gripper
                 
                 # Control loop timing
                 elapsed_time = time.time() - start_time
@@ -255,7 +283,7 @@ class PI0RobotController:
 
 def main():
     """Main function to initialize and run the robot controller"""
-    from controller_eef import A1ArmController
+    from controller_eef_zeyu import A1ArmController
     
     # Initialize controller and robot system
     controller = A1ArmController()
@@ -265,7 +293,7 @@ def main():
     robot_system.run_control_loop(
         task_name="stack_cups",
         n_iterations=1000,
-        chunk_size=10,
+        chunk_size=1,
         merge_step=1,
         loop_interval=0.1
     )

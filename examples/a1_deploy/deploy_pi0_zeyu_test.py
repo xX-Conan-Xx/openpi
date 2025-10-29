@@ -17,11 +17,11 @@ class PI0RobotController:
     
     # Preset positions and task prompts
     POSITION_PRESETS = {
-        "stack_cups": (0.141813, 0.331205, 0.398772, 0.00, 0.00, 1.00, 0.00, 1.00),
+        "stack_cups": (0.17245, 0.31820, 0.34104, 0.155769, 0.963294, 0.197023, 0.094776, 1.00),
     }
     
     TASK_PROMPTS = {
-        "stack_cups": "pick up the transparent bottle and place it on the other side of pink cup",
+        "stack_cups": "pick up the opaque bottle and place it on the other side of the pink cup",
     }
     
     def __init__(self, controller, websocket_host="0.0.0.0", websocket_port=8000):
@@ -47,19 +47,41 @@ class PI0RobotController:
             get_L515_image(self.pipelines)
             get_D435_image(self.pipelines)
     
-    def capture_images(self, step=None, save_dir="/home/luka/Wenkai/visualization/"):
+    def capture_images(self, step=None, save_dir="/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/TestDump/"):
         """Capture and process images from cameras"""
         try:
-            main_image = get_L515_image(self.pipelines)
-            wrist_image = get_D435_image(self.pipelines)
+            # Load test images from a directory
+            test_image_dir = "/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/Data/A1_table_dataset_930/pick_bottle_opaque_messy/demo_0/"
+            main_image_path = os.path.join(
+                test_image_dir, "right_camera", f"scene_frame_{step+1:04d}.jpg"
+            )
+            wrist_image_path = os.path.join(
+                test_image_dir, "left_camera", f"wrist_frame_{step+1:04d}.jpg"
+            )
+            main_image = Image.open(main_image_path)
+            wrist_image = Image.open(wrist_image_path)
+            
+            # if os.path.exists(main_image_path) and os.path.exists(wrist_image_path):
+            #     main_image = Image.open(main_image_path)
+            #     wrist_image = Image.open(wrist_image_path)
+            # else:
+            #     print("Test images not found, skipping step")
+            #     main_image, wrist_image = None, None
+
+            # main_image = get_L515_image(self.pipelines)
+            # wrist_image = get_D435_image(self.pipelines)
             
             if main_image is None or wrist_image is None:
                 print("Failed to capture image from camera.")
                 return None, None, None
                 
-            # Convert to BGR and resize
-            bgr_main = self._convert_to_bgr(main_image).resize((256, 256))
-            bgr_wrist = self._convert_to_bgr(wrist_image).resize((256, 256))
+            # # Convert to BGR and resize
+            # bgr_main = self._convert_to_bgr(main_image).resize((256, 256))
+            # bgr_wrist = self._convert_to_bgr(wrist_image).resize((256, 256))
+
+            # keep the input as rgb
+            bgr_main = main_image.resize((224, 224))
+            bgr_wrist = wrist_image.resize((224, 224))
             
             # Save images if step is provided
             main_path = None
@@ -116,10 +138,11 @@ class PI0RobotController:
         
         # Process gripper command
         gripper_command = action_step[6]
-        gripper_position = round((1 - gripper_command) / 2, 5)
+        # gripper_position = round((1 - gripper_command) / 2, 5)
+        gripper_position = round(gripper_command, 5)
         
         # Fixed orientation values
-        new_rpy = [0.027, -0.01, 3.15]
+        # new_rpy = [0.027, -0.01, 3.15]
         
         return new_position, new_rpy, gripper_position
     
@@ -171,29 +194,39 @@ class PI0RobotController:
         execute_action = self.POSITION_PRESETS[task_name]
         init_pose = list(execute_action[:3])
         init_quat_exe = execute_action[3:7]
-        init_quat_infer = [execute_action[3], execute_action[5], execute_action[4], execute_action[6]]
+        init_quat_infer = [execute_action[3], execute_action[4], execute_action[5], execute_action[6]]
         
         print(f"Initial pose: {init_pose}, Quaternion: {init_quat_exe}")
         
         init_rpy_exe = self.quaternion_to_rpy(init_quat_exe)
         init_rpy_infer = self.quaternion_to_rpy(init_quat_infer) 
-        init_gripper = -execute_action[-1]
+        init_gripper = execute_action[-1]
         
         print(f"Initial state - Pose: {init_pose}, RPY: {init_rpy_exe}, Gripper: {init_gripper}")
         
         step = 0
         
+        
+        # # load current state from file
+        # pose_load_path = "/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/Data/A1_table_dataset_930/pick_bottle_opaque_messy/demo_0/end_effector_pose_right_arm.txt"
+        # grip_load_path = "/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/Data/A1_table_dataset_930/pick_bottle_opaque_messy/demo_0/joint_states_right_arm.txt"
+        # pose_data = np.loadtxt(pose_load_path)
+        # pose_data = pose_data[:, 1:8]
+        # grip_data = np.loadtxt(grip_load_path)
+        # grip_data = grip_data[:, -1]
+        # pose_data_xyz = pose_data[:, :3]
+        # pose_data_rpy = []
+        # for q in pose_data[:, 3:7]:
+        #     rpy = self.quaternion_to_rpy([q[0], q[2], q[1], q[3]])
+        #     pose_data_rpy.append(rpy)
+
         try:
             while step < n_iterations:
                 print(f"\n--- Step {step} ---")
                 start_time = time.time()
                 
-                # # Capture images
-                # main_image, wrist_image, _ = self.capture_images(step)
-
-                # Generate random main and wrist images
-                main_image = Image.fromarray(np.random.randint(0, 256, (256, 256, 3), dtype=np.uint8))
-                wrist_image = Image.fromarray(np.random.randint(0, 256, (256, 256, 3), dtype=np.uint8))
+                # Capture images
+                main_image, wrist_image, _ = self.capture_images(step)
                 
                 if main_image is None or wrist_image is None:
                     print("Failed to capture camera images, skipping step")
@@ -203,6 +236,12 @@ class PI0RobotController:
                 # Prepare current state
                 current_state = np.concatenate((init_pose, init_rpy_infer, [init_gripper]))
                 
+                print("current_state:", current_state)
+                # Save current state to a text file
+                state_save_path = "/media/zeyu/082b281d-ee9b-bc4b-be11-a1acf8642a75/TestDump/current_state.txt"
+                with open(state_save_path, "a") as state_file:
+                    state_file.write(f"Step {step}: {current_state.tolist()}\n")
+
                 # Prepare inference data
                 element = self.prepare_inference_data(main_image, wrist_image, current_state, prompt)
                 
@@ -225,7 +264,7 @@ class PI0RobotController:
                 
                 # Execute action chunk
                 new_pose, new_rpy_infer, new_gripper = self.execute_action_chunk(
-                    all_actions, chunk_size, merge_step, step,
+                    actions_to_execute, chunk_size, merge_step, step,
                     init_pose, init_rpy_exe, init_gripper, task_name
                 )
                 # print("new_gripper", new_gripper)
@@ -269,8 +308,8 @@ def main():
     # Run control loop
     robot_system.run_control_loop(
         task_name="stack_cups",
-        n_iterations=1000,
-        chunk_size=10,
+        n_iterations=200,
+        chunk_size=1,
         merge_step=1,
         loop_interval=0.1
     )
