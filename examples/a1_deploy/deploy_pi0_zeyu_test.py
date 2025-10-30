@@ -245,6 +245,7 @@ class PI0RobotController:
                 # Prepare inference data
                 element = self.prepare_inference_data(main_image, wrist_image, current_state, prompt)
                 
+                print("current_state:", current_state)
                 
                 # Perform inference
                 inf_time = time.time()
@@ -253,23 +254,14 @@ class PI0RobotController:
                 
                 # Process actions
                 all_actions = np.asarray(action["actions"])
-                current_state_pose_only = current_state
-                current_state_pose_only[-1] = 0
-                delta_all_actions = all_actions - current_state
-
-                actions_to_execute = delta_all_actions[:chunk_size]
+                actions_to_execute = all_actions[:chunk_size]
                 
-                # # Log absolute positions
-                # absolute_actions = current_state + actions_to_execute.tolist()
-                # print("Actions to execute (absolute positions):")
-                # for i, abs_action in enumerate(absolute_actions):
-                #     print(f"  Step {i+1}: {abs_action}")
-                
-                print("Actions to execute (delta positions):")
-                for i, abs_action in enumerate(actions_to_execute):
+                # Log absolute positions
+                absolute_actions = current_state + actions_to_execute.tolist()
+                print("Actions to execute (absolute positions):")
+                for i, abs_action in enumerate(absolute_actions):
                     print(f"  Step {i+1}: {abs_action}")
                 
-
                 # Execute action chunk
                 new_pose, new_rpy_infer, new_gripper = self.execute_action_chunk(
                     actions_to_execute, chunk_size, merge_step, step,
