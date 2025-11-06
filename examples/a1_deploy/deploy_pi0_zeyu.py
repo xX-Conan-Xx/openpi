@@ -24,7 +24,8 @@ class PI0RobotController:
     }
     
     TASK_PROMPTS = {
-        "stack_cups": "pick up the transparent bottle and place it on the other side of pink cup",
+        "stack_cups": "pick up the transparent bottle and place it on the other side of the pink cup",
+        # "stack_cups": "pick up the opaque bottle and place it on the other side of the pink cup",
     }
     
     def __init__(self, controller, websocket_host="0.0.0.0", websocket_port=8000):
@@ -50,7 +51,7 @@ class PI0RobotController:
             get_L515_image(self.pipelines)
             get_D435_image(self.pipelines)
     
-    def capture_images(self, step=None, save_dir="/home/luka/Zeyu/Record_Other/20"):
+    def capture_images(self, step=None, save_dir="/home/luka/Zeyu/Record_0711/25"):
         """Capture and process images from cameras"""
         try:
             main_image = get_L515_image(self.pipelines)
@@ -87,6 +88,7 @@ class PI0RobotController:
                 wrist_path = os.path.join(save_dir, f"captured_image_wrist_{step}.png")
                 bgr_main.save(main_path)
                 bgr_wrist.save(wrist_path)
+                wrist_image.save(wrist_path.replace("wrist", "raw_wrist"))
                 
             return bgr_main, bgr_wrist, main_path
             
@@ -159,6 +161,9 @@ class PI0RobotController:
             gripper_command = merged_chunk[-1][6]
             action_step = np.concatenate([merged_action_prefix, [gripper_command]])
             
+            mask = np.abs(action_step[:3]) < [0.0001, 0.001, 0.0001]
+            action_step[:3][mask] = 0.0
+            
             # Process and execute action
             new_pos, new_rpy, grip = self.process_action(action_step, current_pose, current_rpy)
             if grip < 0.3:
@@ -170,6 +175,10 @@ class PI0RobotController:
             new_quat = R.from_euler('xyz', new_rpy).as_quat()
             new_quat_exe = [new_quat[3], new_quat[0], new_quat[1], new_quat[2]]
             # final_action = new_pos + new_rpy + [grip]
+            # when y is less than 0.1 set to 0.1
+            if new_pos[2] < 0.1:
+                new_pos[2] = 0.1
+
             final_action = new_pos + new_quat_exe + [grip]
             
             print(f"Executing: {np.array(final_action)}")
@@ -205,7 +214,6 @@ class PI0RobotController:
         init_gripper = execute_action[-1]
         
         print(f"Initial state - Pose: {init_pose}, RPY: {init_rpy_infer}, Gripper: {init_gripper}")
-
         step = 0
 
         try:
@@ -236,7 +244,7 @@ class PI0RobotController:
                 
                 # Process actions
                 all_actions = np.asarray(action["actions"])
-                actions_to_execute = all_actions[:chunk_size]
+                actions_to_execute = all_actions[1:1+chunk_size]
                 print(f"Actions to execute: {actions_to_execute}")
                 
                 # # Log absolute positions
